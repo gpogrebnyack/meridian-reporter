@@ -181,7 +181,25 @@ async def _direct_deck(
     )
 
 
-def _check_deck_rules(body: dict[str, Any]) -> list[str]:
+GEO_RECIPES = {"spike_map", "choropleth"}
+
+
+def _has_geo_data(enriched: dict[str, Any]) -> int:
+    """Return country count if enriched has a per-country array, else 0."""
+    for key in ("geographic_presence_enriched", "geographic_presence"):
+        rows = enriched.get(key)
+        if isinstance(rows, list) and len(rows) >= 5:
+            sample = rows[0] if rows else {}
+            if isinstance(sample, dict) and any(
+                k in sample for k in ("iso2", "iso3", "lat", "country")
+            ):
+                return len(rows)
+    return 0
+
+
+def _check_deck_rules(
+    body: dict[str, Any], enriched: dict[str, Any] | None = None
+) -> list[str]:
     """Post-schema checks the JSON schema cannot express."""
     issues: list[str] = []
     slides = body.get("slides_storyboard", [])
@@ -203,6 +221,14 @@ def _check_deck_rules(body: dict[str, Any]) -> list[str]:
     for r, n in counts.items():
         if n > 2:
             issues.append(f"recipe '{r}' used {n} times (cap is 2)")
+
+    if enriched is not None:
+        geo_n = _has_geo_data(enriched)
+        if geo_n and not (GEO_RECIPES & set(used)):
+            issues.append(
+                f"enriched has {geo_n} country rows but no map recipe in deck "
+                f"(require ≥1 of {sorted(GEO_RECIPES)})"
+            )
     return issues
 
 
@@ -265,7 +291,9 @@ async def _run_async(
     return result
 
 
-def _print_summary(result: StoryboardResult) -> None:
+def _print_summary(
+    result: StoryboardResult, enriched: dict[str, Any] | None = None
+) -> None:
     console.rule("[bold]Art Director v2")
     status = "[green]ok[/green]" if result.ok else "[red]fail[/red]"
     usage = result.usage or {}
@@ -283,7 +311,7 @@ def _print_summary(result: StoryboardResult) -> None:
         return
 
     slides = result.body.get("slides_storyboard", [])
-    issues = _check_deck_rules(result.body)
+    issues = _check_deck_rules(result.body, enriched)
     used: list[str] = []
     for s in slides:
         used.append(s["recipe"])
@@ -344,7 +372,7 @@ def run_art_direction(
             target_slide_count=target_slide_count,
         )
     )
-    _print_summary(result)
+    _print_summary(result, enriched)
     return result
 
 

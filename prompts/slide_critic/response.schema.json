@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meridian.report/schema/slide-critic-response.json",
+  "title": "SlideCriticResponse",
+  "type": "object",
+  "required": ["verdict", "issues"],
+  "properties": {
+    "verdict": { "type": "string", "enum": ["ok", "fail"] },
+    "summary": { "type": "string", "maxLength": 400 },
+    "issues": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": ["kind", "description", "hint"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["overlap", "overflow", "orphaned", "missing", "duplicate", "illegible", "broken_chart", "contradiction", "imbalance"]
+          },
+          "description": { "type": "string", "minLength": 4, "maxLength": 800 },
+          "hint": { "type": "string", "minLength": 4, "maxLength": 600 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

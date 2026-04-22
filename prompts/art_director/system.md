@@ -146,6 +146,31 @@ object: the whole `slides_storyboard`.
    Add a secondary only when it deepens the same story on the same page —
    e.g. hero_number + a three-year sparkline; not two unrelated charts.
 
+5. **Data-shape pre-check — MANDATORY before emitting each slide.**
+   Every recipe in the catalog carries a `*Data shape*:` line stating
+   exactly what the recipe needs (scalar, array of rows, one time series,
+   two time series, GeoJSON + values, etc.). For each slide, walk every
+   path in `required_data_paths`, resolve it against the enriched JSON,
+   and ask: does the resolved value's shape match what this recipe needs?
+
+   **If no, pick a different recipe.** Do not force-fit. A mismatched
+   recipe renders as a degenerate chart and the slide is wasted.
+
+   **Bad example (real failure mode):** `connected_scatter` requires TWO
+   time series (X and Y, same length) to trace a path through the plane.
+   If `training_hours_per_head` is a single scalar in the data (48), the
+   Y axis has nowhere to move — the path collapses to a horizontal line
+   and the whole point of the recipe is lost. Correct fix: drop to
+   `slope_graph` on the one metric that DOES have a series (headcount),
+   and carry the flat-capability observation in the subhead or footnote.
+
+   **Common mismatches to catch:**
+   - scalar where a time series is needed (as above)
+   - 5-point yearly series picked for `moving_average` (needs ≥24 points)
+   - 3 peers picked for `beeswarm` or `barcode` (needs ≥8 for density)
+   - scalar array picked for `dot_heatmap`/`hex_bin` (needs 2D points)
+   - flat list picked for `treemap` without hierarchy
+
 # Narrative tag — the thin semantic layer
 
 Every slide must carry exactly one `narrative_tag` from the closed
@@ -184,6 +209,13 @@ Record every reframe in `reformulation_notes`.
   `connected_scatter`, `bullet_chart`).
 - **Cadence:** alternate dense and sparse recipes so the deck breathes —
   never two consecutive heatmaps or two consecutive bar recipes.
+- **Geography is mandatory when data supports it.** If the enriched JSON
+  contains ≥5 countries with ISO codes or lat/lon (common locations:
+  `geographic_presence`, `geographic_presence_enriched`, any array of
+  country-level rows), AT LEAST ONE slide in the deck MUST use
+  `spike_map` or `choropleth`. A world basemap is always available to
+  the designer at runtime — do not skip map recipes because "we don't
+  have GeoJSON", we do.
 - **Editorial chrome is inside the SVG.** The renderer injects nothing
   except a small page counter in the top-right corner. The designer
   draws the headline, eyebrow, and footnote **inside** the 1600×900 SVG.

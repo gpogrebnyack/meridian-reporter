@@ -78,6 +78,7 @@ def _build_user_message(
     recipes: str,
     narrative_tags: str,
     storyboard_entry: dict[str, Any],
+    critic_feedback: str | None = None,
 ) -> list[dict[str, Any]]:
     """Split user into cacheable shared prefix and per-slide tail."""
     meta = (plan or {}).get("meta", {}) or {}
@@ -107,10 +108,21 @@ def _build_user_message(
     rendered = _render(user_tmpl, shared_mapping)
     shared_part, _, tail = rendered.partition("__STORYBOARD_SPLIT__")
     entry_blob = json.dumps(storyboard_entry, ensure_ascii=False, indent=2) + tail
-    return [
+    blocks = [
         text_block(shared_part, cache=True),
         text_block(entry_blob, cache=False),
     ]
+    if critic_feedback:
+        blocks.append(text_block(
+            "# Revision brief — a previous render of this exact slide had visual bugs\n\n"
+            "A vision critic reviewed the PNG of your prior attempt and listed the "
+            "issues below. Produce a NEW `render_code` that fixes all of them while "
+            "preserving the recipe, headline intent, and data_refs. Apply each hint "
+            "literally unless it conflicts with the storyboard entry.\n\n"
+            + critic_feedback,
+            cache=False,
+        ))
+    return blocks
 
 
 async def _design_slide(
@@ -129,6 +141,7 @@ async def _design_slide(
     schema: dict[str, Any],
     max_tokens: int,
     reasoning_max_tokens: int | None,
+    critic_feedback: str | None = None,
 ) -> SlideResult:
     sid = storyboard_entry["id"]
     recipe = storyboard_entry.get("recipe", "")
@@ -140,6 +153,7 @@ async def _design_slide(
         recipes=recipes,
         narrative_tags=narrative_tags,
         storyboard_entry=storyboard_entry,
+        critic_feedback=critic_feedback,
     )
     try:
         result = await or_client.chat_async(
@@ -197,6 +211,7 @@ async def _run_async(
     max_tokens: int,
     reasoning_max_tokens: int | None,
     only: set[str] | None,
+    critic_feedback_by_id: dict[str, str] | None = None,
 ) -> list[SlideResult]:
     system, user_tmpl, schema, recipes, narrative_tags = _load_prompts()
     system_blocks = [text_block(system, cache=True)]
@@ -230,6 +245,7 @@ async def _run_async(
                 schema=schema,
                 max_tokens=max_tokens,
                 reasoning_max_tokens=reasoning_max_tokens,
+                critic_feedback=(critic_feedback_by_id or {}).get(entry["id"]),
             )
             for entry in storyboard
         ]
@@ -247,22 +263,48 @@ async def _run_async(
         if r.reasoning:
             (slides_dir / f"{r.slide_id}.reasoning.md").write_text(r.reasoning)
 
-    index = {
-        "model": model,
-        "slides": [
-            {
-                "id": r.slide_id,
-                "recipe": r.recipe,
-                "ok": r.ok,
-                "error": r.error,
-                "usage": r.usage,
-            }
-            for r in results
-        ],
+    run_entries = {
+        r.slide_id: {
+            "id": r.slide_id,
+            "recipe": r.recipe,
+            "ok": r.ok,
+            "error": r.error,
+            "usage": r.usage,
+        }
+        for r in results
     }
-    (slides_dir / "_index.json").write_text(json.dumps(index, indent=2, ensure_ascii=False))
+    # Partial runs (only=…) must not wipe entries for slides we didn't touch.
+    index_path = slides_dir / "_index.json"
+    merged: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    if index_path.exists():
+        try:
+            prior = json.loads(index_path.read_text())
+            for entry in prior.get("slides", []):
+                sid = entry.get("id")
+                if not sid:
+                    continue
+                merged.append(run_entries.get(sid, entry))
+                seen.add(sid)
+        except json.JSONDecodeError:
+            pass
+    for sid, entry in run_entries.items():
+        if sid not in seen:
+            merged.append(entry)
+    index = {"model": model, "slides": merged}
+    index_path.write_text(json.dumps(index, indent=2, ensure_ascii=False))
 
     return results
+
+
+ALLOWED_FONT_SIZES = {11, 12, 14, 18, 32, 40, 44, 60, 160}
+_FONT_SIZE_RE = re.compile(r"""font-size["'\s,:)]+(\d+)""")
+
+
+def _check_typography(code: str) -> list[int]:
+    """Return sorted list of font-size literals that are NOT in the scale."""
+    raw = {int(m) for m in _FONT_SIZE_RE.findall(code or "")}
+    return sorted(raw - ALLOWED_FONT_SIZES)
 
 
 def _print_summary(results: list[SlideResult]) -> None:
@@ -298,6 +340,20 @@ def _print_summary(results: list[SlideResult]) -> None:
         )
     console.print(t)
 
+    typo_issues: list[tuple[str, list[int]]] = []
+    for r in results:
+        if r.ok and r.body:
+            off = _check_typography(r.body.get("render_code", ""))
+            if off:
+                typo_issues.append((r.slide_id, off))
+    if typo_issues:
+        console.print(
+            f"[yellow]typography:[/yellow] {len(typo_issues)} slide(s) "
+            f"use font-size values outside the scale {sorted(ALLOWED_FONT_SIZES)}"
+        )
+        for sid, off in typo_issues:
+            console.print(f"  [yellow]•[/yellow] {sid}: {off}")
+
     console.print(
         f"prompt={_sum('prompt_tokens'):,}  "
         f"completion={_sum('completion_tokens'):,}  "
@@ -317,6 +373,7 @@ def run_slides(
     max_tokens: int = 16000,
     reasoning_max_tokens: int | None = 3000,
     only: list[str] | None = None,
+    critic_feedback_by_id: dict[str, str] | None = None,
 ) -> list[SlideResult]:
     storyboard_doc = json.loads(storyboard_path.read_text())
     storyboard = storyboard_doc.get("slides_storyboard", [])
@@ -339,6 +396,7 @@ def run_slides(
             max_tokens=max_tokens,
             reasoning_max_tokens=reasoning_max_tokens,
             only=set(only) if only else None,
+            critic_feedback_by_id=critic_feedback_by_id,
         )
     )
     _print_summary(results)

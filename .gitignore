@@ -16,6 +16,9 @@ wheels/
 
 # Outputs
 /out/
+/archive/
+/slides.html
+/slides_geo_test.html
 .DS_Store
 
 # Local tool state

@@ -23,7 +23,7 @@ from .art_director import run_art_direction
 from .config import load_config
 from .insights import run_insight_hunter
 from .render import build_slides
-from .slides import run_slides
+from .slide_loop import run_design_critique_loop
 
 ROOT = Path(__file__).resolve().parent.parent
 console = Console()
@@ -71,17 +71,20 @@ def run() -> None:
         target_slide_count=cfg.target_slide_count,
     )
 
-    console.rule("[bold]slide designer")
-    run_slides(
+    console.rule("[bold]slide designer + critic loop")
+    run_design_critique_loop(
         storyboard_path=out_dir / "art_direction.json",
         enriched_path=enriched_path,
         plan_path=None,
-        model=cfg.slide_designer_model,
+        designer_model=cfg.slide_designer_model,
+        critic_model=cfg.slide_critic_model,
         output_dir=out_dir,
+        html_path=ROOT / "slides.html",
         concurrency=cfg.concurrency,
+        max_rounds=2,
     )
 
-    console.rule("[bold]render")
+    console.rule("[bold]final render")
     build_slides(
         enriched_path=enriched_path,
         slides_dir=out_dir / "slides",

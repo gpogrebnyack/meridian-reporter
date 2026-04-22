@@ -1160,13 +1160,409 @@ export function createPrimitives(d3, palette) {
     return g;
   }
 
+  // ── Text measurement (Canvas 2D — works without DOM attach) ─────────────
+  let _measureCtx = null;
+  function measureText(text, fontSize, fontFamily, fontWeight) {
+    if (!_measureCtx) {
+      const c = document.createElement("canvas");
+      _measureCtx = c.getContext("2d");
+    }
+    _measureCtx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+    return _measureCtx.measureText(text).width;
+  }
+
+  function wrapLines(text, maxWidth, fontSize, fontFamily, fontWeight) {
+    const words = String(text).split(/\s+/).filter(Boolean);
+    const lines = [];
+    let line = "";
+    for (const w of words) {
+      const probe = line ? line + " " + w : w;
+      if (measureText(probe, fontSize, fontFamily, fontWeight) <= maxWidth || !line) {
+        line = probe;
+      } else {
+        lines.push(line);
+        line = w;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  // ── eyebrow ─────────────────────────────────────────────────────────────
+  // Uniform all-caps label at canvas top. Use on every slide.
+  function eyebrow(svg, text, opts = {}) {
+    const { x = 80, y = 64, color = "ink", opacity = 1 } = opts;
+    return svg.append("text")
+      .attr("x", x).attr("y", y)
+      .attr("font-family", palette.bodyFont)
+      .attr("font-size", palette.type.eyebrow)
+      .attr("font-weight", 600)
+      .attr("letter-spacing", 2.6)
+      .attr("fill", colorOf(color))
+      .attr("fill-opacity", opacity)
+      .text(String(text).toUpperCase());
+  }
+
+  // ── headline ────────────────────────────────────────────────────────────
+  // Editorial headline with automatic word-wrap to fit maxWidth. Always use
+  // this — never hand-roll headline text with svg.append("text").
+  // Returns {node, bottomY} so callers can lay out the subhead below it.
+  function headline(svg, text, opts = {}) {
+    const {
+      x = 80, y = 134, maxWidth = 1440,
+      color = "primary", lineHeight = 1.05,
+    } = opts;
+    const size = palette.type.headline;
+    const weight = 500;
+    const lines = wrapLines(text, maxWidth, size, palette.headingFont, weight);
+    const t = svg.append("text")
+      .attr("x", x).attr("y", y)
+      .attr("font-family", palette.headingFont)
+      .attr("font-size", size)
+      .attr("font-weight", weight)
+      .attr("letter-spacing", -0.7)
+      .attr("fill", colorOf(color));
+    lines.forEach((line, i) => {
+      t.append("tspan")
+        .attr("x", x)
+        .attr("dy", i === 0 ? 0 : size * lineHeight)
+        .text(line);
+    });
+    const bottomY = y + (lines.length - 1) * size * lineHeight;
+    return { node: t, bottomY, lines: lines.length };
+  }
+
+  // ── subhead ─────────────────────────────────────────────────────────────
+  // Supporting line beneath the headline. Sentence case, letter-spacing 0.
+  // `y` should be set to headline.bottomY + 38 for single-line headlines.
+  function subhead(svg, text, opts = {}) {
+    const {
+      x = 80, y = 172, maxWidth = 1440,
+      color = "ink", opacity = 0.6,
+    } = opts;
+    const size = palette.type.subhead;
+    const lines = wrapLines(text, maxWidth, size, palette.bodyFont, 400);
+    const t = svg.append("text")
+      .attr("x", x).attr("y", y)
+      .attr("font-family", palette.bodyFont)
+      .attr("font-size", size).attr("font-weight", 400)
+      .attr("fill", colorOf(color)).attr("fill-opacity", opacity);
+    lines.forEach((line, i) => {
+      t.append("tspan")
+        .attr("x", x)
+        .attr("dy", i === 0 ? 0 : size * 1.25)
+        .text(line);
+    });
+    return { node: t, bottomY: y + (lines.length - 1) * size * 1.25 };
+  }
+
+  // ── kpiRow ──────────────────────────────────────────────────────────────
+  // Evenly distributes 2-5 KPIs in a horizontal band. Each item:
+  //   {label, value, sub?, accent?}
+  // Positions: label on top (eyebrow), big numeral below, optional sub-line.
+  function kpiRow(svg, items, opts = {}) {
+    const {
+      x = 80, y = 440, width = 1440,
+      valueSize = palette.type.kpi_m,
+      valueFont = palette.headingFont,
+      accentColor = palette.accent,
+    } = opts;
+    const n = items.length;
+    const gap = 24;
+    const colW = (width - gap * (n - 1)) / n;
+    const g = svg.append("g").attr("class", "prim-kpi-row");
+    items.forEach((it, i) => {
+      const cx = x + i * (colW + gap);
+      g.append("text")
+        .attr("x", cx).attr("y", y)
+        .attr("font-family", palette.bodyFont)
+        .attr("font-size", palette.type.eyebrow)
+        .attr("font-weight", 600).attr("letter-spacing", 2.6)
+        .attr("fill", palette.ink)
+        .text(String(it.label).toUpperCase());
+      g.append("text")
+        .attr("x", cx).attr("y", y + valueSize + 12)
+        .attr("font-family", valueFont)
+        .attr("font-size", valueSize).attr("font-weight", 400)
+        .attr("letter-spacing", -1.2)
+        .attr("fill", it.accent ? accentColor : palette.primary)
+        .text(String(it.value));
+      if (it.sub) {
+        g.append("text")
+          .attr("x", cx).attr("y", y + valueSize + 38)
+          .attr("font-family", palette.bodyFont)
+          .attr("font-size", palette.type.body).attr("font-weight", 400)
+          .attr("fill", palette.ink).attr("fill-opacity", 0.6)
+          .text(it.sub);
+      }
+    });
+    return g;
+  }
+
+  // ── rightFlushHero ──────────────────────────────────────────────────────
+  // Full-bleed hero numeral in the right column with a flush-right anchor so
+  // the glyphs CANNOT overflow the canvas, whatever the string length.
+  // Eyebrow goes ABOVE the numeral; optional subline goes BELOW.
+  // opts: {rightX=1520, y=360, eyebrowText, subText, color="accent"}
+  function rightFlushHero(svg, text, opts = {}) {
+    const {
+      rightX = 1520, y = 360,
+      eyebrowText, subText,
+      color = "accent",
+    } = opts;
+    const g = svg.append("g").attr("class", "prim-right-hero");
+    const fill = colorOf(color);
+    if (eyebrowText) {
+      g.append("text")
+        .attr("x", rightX).attr("y", y - palette.type.hero * 0.78)
+        .attr("text-anchor", "end")
+        .attr("font-family", palette.bodyFont).attr("font-size", palette.type.eyebrow)
+        .attr("font-weight", 600).attr("letter-spacing", 2.6)
+        .attr("fill", palette.ink).attr("fill-opacity", 0.7)
+        .text(String(eyebrowText).toUpperCase());
+    }
+    g.append("text")
+      .attr("x", rightX).attr("y", y)
+      .attr("text-anchor", "end")
+      .attr("font-family", palette.headingFont)
+      .attr("font-size", palette.type.hero).attr("font-weight", 400)
+      .attr("letter-spacing", -6).attr("fill", fill)
+      .text(text);
+    if (subText) {
+      g.append("text")
+        .attr("x", rightX).attr("y", y + palette.type.body * 2.2)
+        .attr("text-anchor", "end")
+        .attr("font-family", palette.bodyFont).attr("font-size", palette.type.body)
+        .attr("fill", palette.ink).attr("fill-opacity", 0.6)
+        .text(subText);
+    }
+    return g;
+  }
+
+  // ── marimekkoBar ────────────────────────────────────────────────────────
+  // Single marimekko column. Margin value label sits ABOVE the bar top, never
+  // inside. Segment name + sub-caption sit BELOW the stage baseline.
+  // opts: {x, y0, colW, barH, name, sub, color="primary", valueLabel, eyebrowText="EBITDA MARGIN"}
+  // (x, y0) is the TOP-LEFT of the bar; barH must already be scaled to margin.
+  function marimekkoBar(svg, opts = {}) {
+    const {
+      x, y0, colW, barH,
+      stageBottomY,
+      name, sub, color = "primary",
+      valueLabel, eyebrowText = "EBITDA MARGIN",
+    } = opts;
+    const g = svg.append("g").attr("class", "prim-marimekko");
+    g.append("rect")
+      .attr("x", x).attr("y", y0)
+      .attr("width", colW).attr("height", barH)
+      .attr("fill", colorOf(color));
+    // Value label ABOVE the bar — stacked eyebrow then value.
+    const eyebrowY = y0 - 34;
+    const valueY = y0 - 10;
+    g.append("text")
+      .attr("x", x + 8).attr("y", eyebrowY)
+      .attr("font-family", palette.bodyFont).attr("font-size", palette.type.eyebrow)
+      .attr("font-weight", 600).attr("letter-spacing", 2.6)
+      .attr("fill", palette.ink).attr("fill-opacity", 0.6)
+      .text(String(eyebrowText).toUpperCase());
+    g.append("text")
+      .attr("x", x + 8).attr("y", valueY)
+      .attr("font-family", palette.headingFont).attr("font-size", palette.type.kpi_s)
+      .attr("font-weight", 400).attr("letter-spacing", -0.6)
+      .attr("fill", palette.primary)
+      .text(valueLabel);
+    // Segment name BELOW stage baseline.
+    const baseY = stageBottomY != null ? stageBottomY : y0 + barH;
+    g.append("text")
+      .attr("x", x + 8).attr("y", baseY + 28)
+      .attr("font-family", palette.bodyFont).attr("font-size", palette.type.eyebrow)
+      .attr("font-weight", 600).attr("letter-spacing", 2.6)
+      .attr("fill", palette.ink)
+      .text(String(name).toUpperCase());
+    if (sub) {
+      g.append("text")
+        .attr("x", x + 8).attr("y", baseY + 50)
+        .attr("font-family", palette.bodyFont).attr("font-size", palette.type.body)
+        .attr("fill", palette.ink).attr("fill-opacity", 0.6)
+        .text(sub);
+    }
+    return g;
+  }
+
+  // ── endpointLabels ──────────────────────────────────────────────────────
+  // Place N labels at the right end of a series. Labels are force-stacked so
+  // their Y positions don't collide (min vertical gap). Each item:
+  //   {eyebrow, value, y, color?}
+  // Eyebrow sits on top of value within each block; blocks are spaced so
+  // bottom-of-block[i] < top-of-block[i+1].
+  function endpointLabels(svg, items, opts = {}) {
+    const { x = 1480, minGap = 8 } = opts;
+    const eH = palette.type.eyebrow;
+    const vH = palette.type.kpi_s;
+    const blockH = eH + 6 + vH + minGap;
+    const sorted = items.map((it, i) => ({ ...it, i })).sort((a, b) => a.y - b.y);
+    // Simple top-down sweep: each block's top must be >= prev.top + blockH.
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i].y < sorted[i - 1].y + blockH) {
+        sorted[i].y = sorted[i - 1].y + blockH;
+      }
+    }
+    const g = svg.append("g").attr("class", "prim-endpoint-labels");
+    sorted.forEach((it) => {
+      const fill = colorOf(it.color || "primary");
+      g.append("text")
+        .attr("x", x).attr("y", it.y)
+        .attr("font-family", palette.bodyFont).attr("font-size", eH)
+        .attr("font-weight", 600).attr("letter-spacing", 2.6)
+        .attr("fill", fill).attr("fill-opacity", 0.85)
+        .text(String(it.eyebrow).toUpperCase());
+      g.append("text")
+        .attr("x", x).attr("y", it.y + eH + 6 + vH * 0.82)
+        .attr("font-family", palette.headingFont).attr("font-size", vH)
+        .attr("font-weight", 400).attr("letter-spacing", -0.5)
+        .attr("fill", fill)
+        .text(String(it.value));
+    });
+    return g;
+  }
+
+  // ── eventAnnotation ─────────────────────────────────────────────────────
+  // Structured annotation block for a chart event. Date → value → note stack,
+  // all flush-left at `x`, guaranteed vertical spacing.
+  // opts: {x, y, date, value, note, color="accent", side="below"}
+  // side="above" reverses stack so block sits ABOVE y.
+  function eventAnnotation(svg, opts = {}) {
+    const {
+      x, y, date, value, note,
+      color = "accent", side = "below",
+    } = opts;
+    const g = svg.append("g").attr("class", "prim-event-ann");
+    const fill = colorOf(color);
+    const rows = [];
+    if (date) rows.push({ kind: "eyebrow", text: date, color: fill });
+    if (value) rows.push({ kind: "value", text: value, color: fill });
+    if (note) rows.push({ kind: "note", text: note, color: palette.ink });
+    const heights = rows.map((r) =>
+      r.kind === "eyebrow" ? palette.type.eyebrow
+      : r.kind === "value" ? palette.type.kpi_s
+      : palette.type.body
+    );
+    const gaps = rows.map((r) => (r.kind === "value" ? 6 : 10));
+    let cursor = side === "above"
+      ? y - heights.reduce((s, h, i) => s + h + gaps[i], 0)
+      : y;
+    rows.forEach((r, i) => {
+      cursor += heights[i];
+      const isEyebrow = r.kind === "eyebrow";
+      const isValue = r.kind === "value";
+      g.append("text")
+        .attr("x", x).attr("y", cursor)
+        .attr("font-family", isValue ? palette.headingFont : palette.bodyFont)
+        .attr("font-size", heights[i])
+        .attr("font-weight", isEyebrow ? 600 : (isValue ? 400 : 400))
+        .attr("letter-spacing", isEyebrow ? 2.6 : (isValue ? -0.4 : 0))
+        .attr("fill", r.color)
+        .attr("fill-opacity", r.kind === "note" ? 0.65 : 1)
+        .text(isEyebrow ? String(r.text).toUpperCase() : r.text);
+      cursor += gaps[i];
+    });
+    return g;
+  }
+
+  // ── donutCenter ─────────────────────────────────────────────────────────
+  // Center two lines inside a donut: big value line, small label line below.
+  // Lines are stacked with a guaranteed gap; the whole block is vertically
+  // centered around (cx, cy).
+  function donutCenter(svg, opts = {}) {
+    const { cx, cy, value, label } = opts;
+    const vH = palette.type.kpi_m;
+    const lH = palette.type.eyebrow;
+    const gap = 12;
+    const totalH = vH + gap + lH;
+    const startY = cy - totalH / 2;
+    const g = svg.append("g").attr("class", "prim-donut-center");
+    g.append("text")
+      .attr("x", cx).attr("y", startY + vH * 0.82)
+      .attr("text-anchor", "middle")
+      .attr("font-family", palette.headingFont).attr("font-size", vH)
+      .attr("font-weight", 400).attr("letter-spacing", -0.8)
+      .attr("fill", palette.primary)
+      .text(String(value));
+    if (label) {
+      g.append("text")
+        .attr("x", cx).attr("y", startY + vH + gap + lH * 0.82)
+        .attr("text-anchor", "middle")
+        .attr("font-family", palette.bodyFont).attr("font-size", lH)
+        .attr("font-weight", 600).attr("letter-spacing", 2.6)
+        .attr("fill", palette.ink).attr("fill-opacity", 0.7)
+        .text(String(label).toUpperCase());
+    }
+    return g;
+  }
+
+  // ── bulletRow ───────────────────────────────────────────────────────────
+  // One row of a bullet chart. Pillar name + sub on the LEFT, bar in the
+  // MIDDLE, numeric % value at bar end, target NOTE on its OWN row below the
+  // bar (never on it). Caller passes rowY as the Y-center of the bar.
+  // opts: {rowY, name, sub, progress (0..1), stageX=520, stageW=680, color="primary", targetNote}
+  function bulletRow(svg, opts = {}) {
+    const {
+      rowY, name, sub, progress = 0,
+      stageX = 520, stageW = 680,
+      color = "primary", targetNote,
+    } = opts;
+    const barH = 22;
+    const g = svg.append("g").attr("class", "prim-bullet-row");
+    g.append("text")
+      .attr("x", 80).attr("y", rowY - 4)
+      .attr("font-family", palette.headingFont).attr("font-size", palette.type.subhead)
+      .attr("font-weight", 500).attr("fill", palette.primary)
+      .text(name);
+    if (sub) {
+      g.append("text")
+        .attr("x", 80).attr("y", rowY + 18)
+        .attr("font-family", palette.bodyFont).attr("font-size", palette.type.body)
+        .attr("fill", palette.ink).attr("fill-opacity", 0.55)
+        .text(sub);
+    }
+    // Ghost track + filled bar
+    g.append("rect")
+      .attr("x", stageX).attr("y", rowY - barH / 2)
+      .attr("width", stageW).attr("height", barH)
+      .attr("fill", palette.rule).attr("fill-opacity", 0.25);
+    g.append("rect")
+      .attr("x", stageX).attr("y", rowY - barH / 2)
+      .attr("width", stageW * Math.max(0, Math.min(1, progress)))
+      .attr("height", barH).attr("fill", colorOf(color));
+    // Value at bar end
+    g.append("text")
+      .attr("x", stageX + stageW * progress + 10).attr("y", rowY + 6)
+      .attr("font-family", palette.headingFont).attr("font-size", palette.type.kpi_s)
+      .attr("font-weight", 400).attr("letter-spacing", -0.4)
+      .attr("fill", colorOf(color))
+      .text(`${(progress * 100).toFixed(1)}%`);
+    // Target note — OWN row below the bar, not on it.
+    if (targetNote) {
+      g.append("text")
+        .attr("x", stageX + stageW + 16).attr("y", rowY + barH / 2 + palette.type.body + 6)
+        .attr("font-family", palette.bodyFont).attr("font-size", palette.type.body)
+        .attr("fill", palette.ink).attr("fill-opacity", 0.55)
+        .text(targetNote);
+    }
+    return g;
+  }
+
   return {
-    heroNumber, bodyCopy, rule, caption,
+    eyebrow, headline, subhead, kpiRow,
+    heroNumber, rightFlushHero, bodyCopy, rule, caption,
     leader, callout, timeline, timelineTrack,
     isotype, figure, figureRow,
     arc, slopeLine, sparkline, rankedDots,
     facetGrid, scatter, waterfall, dumbbell,
-    // low-level helper exposed for convenience
+    marimekkoBar, endpointLabels, eventAnnotation,
+    donutCenter, bulletRow,
+    // low-level helpers exposed for convenience
     color: colorOf,
+    measureText, wrapLines,
   };
 }

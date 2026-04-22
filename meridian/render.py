@@ -97,12 +97,23 @@ def _slides_head(branding: dict[str, Any], company_name: str,
     sec1 = secs[0] if len(secs) > 0 else "#3E9A8F"
     sec2 = secs[1] if len(secs) > 1 else "#4B80BF"
     sec3 = secs[2] if len(secs) > 2 else "#E8D5A8"
+    font_heading = branding.get("font_heading") or "Inter Tight"
+    font_body = branding.get("font_body") or "Inter"
+    fam_parts = []
+    for fam in {font_heading, font_body}:
+        fam_parts.append(fam.replace(" ", "+") + ":wght@300;400;500;600;700")
+    google_fonts_url = "https://fonts.googleapis.com/css2?" + "&".join(
+        f"family={p}" for p in fam_parts
+    ) + "&display=swap"
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>{html.escape(company_name)} — Slides {html.escape(str(fiscal_year))}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="{google_fonts_url}">
 <style>
   :root {{
     --primary: {branding.get("primary_color", "#0D1B2E")};
@@ -112,8 +123,8 @@ def _slides_head(branding: dict[str, Any], company_name: str,
     --sec2: {sec2};
     --sec3: {sec3};
     --rule: #B8B0A4;
-    --font-heading: "Inter Tight", Inter, -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-heading: "{font_heading}", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: "{font_body}", -apple-system, BlinkMacSystemFont, sans-serif;
   }}
 </style>
 <style>{slides_css}</style>

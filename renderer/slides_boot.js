@@ -1,7 +1,25 @@
 import * as Plot from "https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.17/+esm";
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+import * as topojson from "https://cdn.jsdelivr.net/npm/topojson-client@3/+esm";
 import { resolveDatasets } from "./data_refs.js";
 import { createPrimitives } from "./slides_primitives.js";
+
+// ── World basemap (TopoJSON shipped alongside this module) ───────────────
+// Exposes a `basemap` object to every render_code with:
+//   basemap.land       — GeoJSON Feature (continental outlines, one MultiPolygon)
+//   basemap.countries  — GeoJSON FeatureCollection (176 country polygons)
+// Use with Plot.geo(basemap.land, {...}) for a light continental silhouette,
+// or Plot.geo(basemap.countries, {...}) when you need per-country shapes.
+let basemap = { land: null, countries: null };
+try {
+  const topo = await fetch(new URL("./world-countries-110m.json", import.meta.url)).then(r => r.json());
+  basemap = {
+    land: topojson.feature(topo, topo.objects.land),
+    countries: topojson.feature(topo, topo.objects.countries),
+  };
+} catch (err) {
+  console.warn("basemap load failed:", err);
+}
 
 // ── format helpers mirror Python placeholder formatters ──────────────────
 const aed = (v, scale, label, decimals = 1) =>
@@ -33,8 +51,8 @@ const palette = {
   accent: BRAND.accent_color || "#C9A96E",
   ink: "#1A1A1A",
   rule: "#B8B0A4",
-  bodyFont: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-  headingFont: "'Inter Tight', Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+  bodyFont: `"${BRAND.font_body || "Inter"}", -apple-system, BlinkMacSystemFont, sans-serif`,
+  headingFont: `"${BRAND.font_heading || "Inter Tight"}", -apple-system, BlinkMacSystemFont, sans-serif`,
   secondary: BRAND.secondary_colors || [],
   segment: (id) => {
     const map = {
@@ -44,6 +62,25 @@ const palette = {
       default: BRAND.accent_color || "#C9A96E",
     };
     return map[id] || map.default;
+  },
+  // Typographic scale — all text in slides MUST use these named sizes.
+  // Never invent in-between values (no 42, 43, 45, 47 ... 19, 21 ...).
+  type: {
+    micro:     11,  // source line, axis ticks, footnotes
+    body:      12,  // chart labels, small captions
+    eyebrow:   14,  // ALL-CAPS section label above headline
+    subhead:   18,  // deck-style subtitle under headline
+    headline:  40,  // main slide title
+    kpi_s:     32,  // secondary KPI numeral
+    kpi_m:     44,  // medium KPI numeral
+    kpi_l:     60,  // primary KPI / hero numeral (small KPI slide)
+    hero:     160,  // full-bleed hero numeral (covers the right column)
+  },
+  weight: {
+    regular: 400,
+    medium:  500,
+    semibold: 600,
+    bold:    700,
   },
 };
 
@@ -74,10 +111,10 @@ function runRenderCode(code, datasets, host) {
   // Note: intentionally sloppy mode — LLM output sometimes drops a `const`
   // keyword, and one missing declaration shouldn't brick the whole slide.
   const fn = new Function(
-    "svg", "d3", "Plot", "datasets", "fmt", "palette", "prim",
+    "svg", "d3", "Plot", "datasets", "fmt", "palette", "prim", "basemap",
     code
   );
-  fn(svgEl, d3, Plot, datasets, fmt, palette, prim);
+  fn(svgEl, d3, Plot, datasets, fmt, palette, prim, basemap);
   host.appendChild(svgEl.node());
 
   // Fixed viewBox across the deck: every slide maps 1600×900 into the stage

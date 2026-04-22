@@ -2,7 +2,9 @@
 
 35 business-usable recipes curated from the Observable Plot gallery (https://observablehq.com/@observablehq/plot-gallery) plus a handful of obvious omissions (choropleth, box plot, ridgeline, calendar heatmap, hexbin, slope graph, dumbbell, bullet chart). Each recipe is a **concrete shape** the Art Director picks for a slide, not a semantic category.
 
-Each entry: `slug` · **Name** — one-line data shape · **Narratives** it can serve · **Marks** · **Code sketch**.
+Each entry: `slug` · **Name** · **Narratives** it can serve · **Marks** · **Data shape** (what the recipe needs from `required_data_paths` to work) · **Code sketch**.
+
+**Always honor the `*Data shape*:` line.** If the available data does not match, pick a different recipe — do not force-fit. A recipe whose shape requirement cannot be met will render as a degenerate chart (flat line, empty axis, single dot).
 
 Recipes are ranked roughly from scale-first → trajectory → distribution → composition → hierarchy → geography.
 
@@ -14,6 +16,7 @@ Recipes are ranked roughly from scale-first → trajectory → distribution → 
 
 *Narratives*: scale_surprise, concentration.
 *Marks*: none — typography only. `prim.heroNumber` at size 240-320.
+*Data shape*: one scalar number (e.g. percent, count, currency).
 
 ```js
 prim.heroNumber(svg, fmt.pct(datasets.share), {
@@ -26,6 +29,7 @@ prim.heroNumber(svg, fmt.pct(datasets.share), {
 
 *Narratives*: slope, trajectory.
 *Marks*: `prim.slopeLine` or raw d3 line + dots.
+*Data shape*: two scalars from two labelled points (then/now, A/B, self/peer). NOT a time series — exactly two values.
 
 ```js
 prim.slopeLine(svg, {
@@ -41,6 +45,7 @@ prim.slopeLine(svg, {
 
 *Narratives*: slope, composition.
 *Marks*: `Plot.ruleY + Plot.dot × 2` or `prim.dumbbell`.
+*Data shape*: array of rows, each with two scalar endpoints (left/right). Minimum 3 rows.
 
 ```js
 Plot.plot({
@@ -56,6 +61,7 @@ Plot.plot({
 
 *Narratives*: anomaly, ranking, composition.
 *Marks*: `Plot.barX` with sorted y, `Plot.axisX`.
+*Data shape*: array of {label, value} rows where some values are negative and some positive.
 
 ```js
 Plot.plot({
@@ -73,6 +79,7 @@ Plot.plot({
 
 *Narratives*: ranking, anomaly.
 *Marks*: `Plot.ruleY + Plot.dot`; use `prim.rankedDots` for canonical output.
+*Data shape*: array of {label, value} rows. Minimum 5 rows to earn ranking.
 
 ```js
 prim.rankedDots(svg, {
@@ -88,6 +95,7 @@ prim.rankedDots(svg, {
 
 *Narratives*: anomaly, duration.
 *Marks*: raw d3 `rect` + `line` per row.
+*Data shape*: array of rows with {label, actual, target, ranges[]}. Minimum 3 rows.
 
 ```js
 rows.forEach((r, i) => {
@@ -103,6 +111,7 @@ rows.forEach((r, i) => {
 
 *Narratives*: composition, ranking, correlation.
 *Marks*: `Plot.barY` with `fx`.
+*Data shape*: array of rows with {group, sub, value} — at least 2 groups × 2 sub-categories.
 
 ```js
 Plot.plot({
@@ -121,6 +130,7 @@ Plot.plot({
 
 *Narratives*: composition, ranking.
 *Marks*: `Plot.barY` with stack.
+*Data shape*: array of {category, segment, value} — at least 3 categories × 2 segments.
 
 ```js
 Plot.plot({
@@ -137,6 +147,7 @@ Plot.plot({
 
 *Narratives*: composition, concentration.
 *Marks*: `Plot.barX` horizontal, `Plot.text` for segment labels.
+*Data shape*: array of segments {segment, share} summing to 100. 2–6 segments.
 
 ```js
 Plot.plot({
@@ -153,6 +164,7 @@ Plot.plot({
 
 *Narratives*: composition, correlation.
 *Marks*: raw d3 with `rect`s sized by two dimensions.
+*Data shape*: array of columns, each with {key, parts: [{label, value}]}. Requires ≥3 columns × ≥2 parts.
 
 ```js
 let xCursor = 0;
@@ -177,6 +189,7 @@ segments.forEach((seg, i) => {
 
 *Narratives*: trajectory, correlation, ranking.
 *Marks*: `Plot.line` with `z`, normalize values to a base year.
+*Data shape*: **≥2 time series**, each an array of {year, value} of the same length. Values will be normalized to 100 at the base year.
 
 ```js
 Plot.plot({
@@ -194,6 +207,7 @@ Plot.plot({
 
 *Narratives*: trajectory, correlation.
 *Marks*: `Plot.line + Plot.dot + Plot.arrow + Plot.text`.
+*Data shape*: **two time series of the SAME length** — one path through (X, Y) plane. Both X and Y metrics must have a value per year. If one axis is a scalar, do NOT pick this recipe.
 
 ```js
 Plot.plot({
@@ -212,6 +226,7 @@ Plot.plot({
 
 *Narratives*: trajectory, duration.
 *Marks*: `Plot.line` × 2 (raw thin + smoothed thick).
+*Data shape*: one time series of ≥24 points (daily/weekly/monthly). A yearly 5-point series is too short.
 
 ```js
 Plot.plot({
@@ -228,6 +243,7 @@ Plot.plot({
 
 *Narratives*: trajectory, distribution.
 *Marks*: `Plot.areaY × N` + `Plot.line`.
+*Data shape*: one time series plus projection bands {year, p10, p25, central, p75, p90}. Requires explicit uncertainty data.
 
 ```js
 Plot.plot({
@@ -245,6 +261,7 @@ Plot.plot({
 
 *Narratives*: composition, trajectory.
 *Marks*: `Plot.areaY` with `stackOffset: "wiggle"`.
+*Data shape*: array of {year, segment, value} — ≥3 segments × ≥5 years.
 
 ```js
 Plot.plot({
@@ -258,6 +275,7 @@ Plot.plot({
 
 *Narratives*: composition, trajectory.
 *Marks*: `Plot.areaY` default stack + `Plot.ruleY([0])`.
+*Data shape*: array of {year, segment, value} — ≥3 segments × ≥5 years.
 
 ```js
 Plot.plot({
@@ -274,6 +292,7 @@ Plot.plot({
 
 *Narratives*: trajectory, named_detail, scale_surprise.
 *Marks*: `Plot.areaY` + `Plot.line` + `Plot.ruleX` for an annotation year.
+*Data shape*: one time series of ≥8 points plus a named event year with a label.
 
 ```js
 Plot.plot({
@@ -291,6 +310,7 @@ Plot.plot({
 
 *Narratives*: trajectory, composition, anomaly.
 *Marks*: `Plot.areaY` × N with clipped bands, or facet per series.
+*Data shape*: ≥8 parallel time series, each ≥20 points.
 
 ```js
 // Simplified horizon: each series gets its own clipped band, colored by band index
@@ -309,6 +329,7 @@ Plot.plot({
 
 *Narratives*: trajectory, composition, ranking.
 *Marks*: `prim.facetGrid` + `prim.sparkline` per cell.
+*Data shape*: ≥6 series, each a short array of values (4–20 points). Ideal for many subjects in parallel.
 
 ```js
 prim.facetGrid(svg, {
@@ -325,6 +346,7 @@ prim.facetGrid(svg, {
 
 *Narratives*: composition, trajectory, correlation.
 *Marks*: `Plot.areaY/lineY` with `fx`.
+*Data shape*: ≥3 series × ≥5 time points, faceted per series. Works with arrays of {series, year, value}.
 
 ```js
 Plot.plot({
@@ -342,6 +364,7 @@ Plot.plot({
 
 *Narratives*: distribution, anomaly, ranking.
 *Marks*: `Plot.dot` + `Plot.dodgeY`.
+*Data shape*: array of {label, value, accent?} peer rows. ≥8 peers to earn the density.
 
 ```js
 Plot.plot({
@@ -357,6 +380,7 @@ Plot.plot({
 
 *Narratives*: ranking, distribution.
 *Marks*: `Plot.dot`, ordered y.
+*Data shape*: array of {label, value} ranked rows. Minimum 5 rows.
 
 ```js
 Plot.plot({
@@ -372,6 +396,7 @@ Plot.plot({
 
 *Narratives*: distribution, ranking.
 *Marks*: `Plot.tickX`.
+*Data shape*: array of values (≥30 points). One axis, many ticks.
 
 ```js
 Plot.plot({
@@ -387,6 +412,7 @@ Plot.plot({
 
 *Narratives*: distribution, duration.
 *Marks*: `Plot.barY` + `Plot.tickY`.
+*Data shape*: array of {category, value} — multiple values per category.
 
 ```js
 Plot.plot({
@@ -402,6 +428,7 @@ Plot.plot({
 
 *Narratives*: distribution, anomaly, named_detail.
 *Marks*: `Plot.rectY` with `Plot.binX`.
+*Data shape*: flat array of numeric values (≥30 samples) to bin.
 
 ```js
 Plot.plot({
@@ -417,6 +444,7 @@ Plot.plot({
 
 *Narratives*: distribution, anomaly, composition.
 *Marks*: `Plot.boxX` or `Plot.boxY`.
+*Data shape*: array of {category, value} samples — ≥3 categories with ≥10 samples each.
 
 ```js
 Plot.plot({
@@ -432,6 +460,7 @@ Plot.plot({
 
 *Narratives*: distribution, correlation.
 *Marks*: `Plot.dot` + `Plot.line` (reference).
+*Data shape*: two comparable arrays of numeric samples.
 
 ```js
 Plot.plot({
@@ -447,6 +476,7 @@ Plot.plot({
 
 *Narratives*: distribution, composition.
 *Marks*: raw d3 — one `areaY` per category stacked with overlap.
+*Data shape*: ≥3 categories, each with a density or histogram series.
 
 ```js
 const rowH = 44, gap = -20; // negative gap = overlap
@@ -463,6 +493,7 @@ categories.forEach((cat, i) => {
 
 *Narratives*: concentration, composition.
 *Marks*: `Plot.waffle` (native) or raw d3 rect grid.
+*Data shape*: array of segments {segment, share} summing to 100.
 
 ```js
 Plot.plot({
@@ -476,6 +507,7 @@ Plot.plot({
 
 *Narratives*: composition, distribution, ranking.
 *Marks*: `Plot.waffleY` / `Plot.cell` grid per group.
+*Data shape*: array of {question, answer, count} for ≥3 questions × ≥2 answers.
 
 ```js
 Plot.plot({
@@ -490,6 +522,7 @@ Plot.plot({
 
 *Narratives*: trajectory, scale_surprise.
 *Marks*: `Plot.cell`.
+*Data shape*: one time series of ≥15 years with one numeric value per year.
 
 ```js
 Plot.plot({
@@ -504,6 +537,7 @@ Plot.plot({
 
 *Narratives*: distribution, duration, trajectory.
 *Marks*: `Plot.cell` with `x: week, y: dayOfWeek, fill: value`.
+*Data shape*: daily time series of ≥300 days with one value per day.
 
 ```js
 Plot.plot({
@@ -519,6 +553,7 @@ Plot.plot({
 
 *Narratives*: distribution, correlation, geography.
 *Marks*: `Plot.dot` + `Plot.bin`.
+*Data shape*: array of 2D points {x, y} with ≥50 observations.
 
 ```js
 Plot.plot({
@@ -532,6 +567,7 @@ Plot.plot({
 
 *Narratives*: distribution, correlation, geography.
 *Marks*: `Plot.hexbin` + `Plot.dot`.
+*Data shape*: array of 2D points {x, y} with ≥50 observations.
 
 ```js
 Plot.plot({
@@ -545,6 +581,7 @@ Plot.plot({
 
 *Narratives*: distribution, correlation.
 *Marks*: `Plot.density` or `Plot.contour`.
+*Data shape*: array of 2D points {x, y} with ≥50 observations.
 
 ```js
 Plot.plot({
@@ -560,6 +597,7 @@ Plot.plot({
 
 *Narratives*: composition, concentration, hierarchy.
 *Marks*: raw d3 `d3.treemap`.
+*Data shape*: hierarchical tree {name, children: [{name, value}]} or flat array of weighted leaves.
 
 ```js
 const root = d3.hierarchy(tree).sum(d => d.value).sort((a,b) => b.value - a.value);
@@ -575,6 +613,7 @@ root.leaves().forEach(leaf => {
 
 *Narratives*: concentration, scale_surprise.
 *Marks*: `prim.arc` (thin) or raw d3 `d3.arc`.
+*Data shape*: one scalar percentage (share of a total).
 
 ```js
 prim.arc(svg, {
@@ -589,6 +628,7 @@ prim.arc(svg, {
 
 *Narratives*: flow, hierarchy.
 *Marks*: raw d3 — nodes + arcs as `d3.arc` or Bezier.
+*Data shape*: nodes array + edges array {source, target, weight?}.
 
 ```js
 const xs = nodes.map((n,i) => 140 + i * (1200/(nodes.length-1)));
@@ -609,14 +649,22 @@ nodes.forEach((n, i) => {
 
 *Narratives*: geography, composition, ranking.
 *Marks*: `Plot.geo` with GeoJSON features in `datasets`.
+*Data shape*: array of rows with ISO-3166 country code (`iso2` or `iso3` or numeric id) and a numeric `value`. The country polygons come from the global `basemap.countries` — do NOT require GeoJSON in `required_data_paths`. Join your rows to `basemap.countries` features by `d.id` (numeric) or `d.properties.name`.
 
 ```js
+// datasets.rows: [{iso3: "ARE", value: 48.2, accent: true}, ...]
+const byIso = new Map(datasets.rows.map(r => [r.iso3, r]));
 Plot.plot({
-  projection: "mercator", // or "equal-earth", "identity" etc
+  projection: "mercator",
   color: {scheme: "blues", legend: false},
   marks: [
-    Plot.geo(datasets.countries, {fill: (d) => datasets.values[d.properties.id] ?? 0, stroke: "white", strokeWidth: 0.5}),
-    Plot.geo(datasets.countries.filter(d => datasets.values[d.properties.id] && d.properties.accent), {stroke: palette.accent, strokeWidth: 2}),
+    Plot.geo(basemap.countries, {
+      fill: (d) => { const r = byIso.get(d.properties.iso_a3); return r ? r.value : 0; },
+      stroke: "white", strokeWidth: 0.5,
+    }),
+    Plot.geo(basemap.countries.features.filter(d => {
+      const r = byIso.get(d.properties.iso_a3); return r && r.accent;
+    }), {stroke: palette.accent, strokeWidth: 2, fill: "none"}),
   ],
 });
 ```
@@ -624,19 +672,26 @@ Plot.plot({
 ## 40. `spike_map` · Spike map — geo with vertical spikes per point
 
 *Narratives*: geography, scale_surprise, ranking.
-*Marks*: `Plot.geo` + `Plot.vector` (or `Plot.ruleY`).
+*Marks*: `Plot.geo` (basemap silhouette) + `Plot.vector` for spikes.
+*Data shape*: array of points `{lon, lat, value, accent?, label?}`. The continental silhouette comes from the global `basemap.land` — do NOT require GeoJSON in `required_data_paths`.
+
+**CRITICAL:** `Plot.vector` auto-scales the `length` channel, so raw pixel values get crushed into ~10px spikes. You MUST override the scale at `Plot.plot` level with either `length: {type: "identity"}` (then return pixel values directly in `length`, e.g. `length: d => 10 + (d.value/max) * 180`) or `length: {range: [0, 180]}` (then return the raw metric, e.g. `length: "value"`). Skipping this override is the single most common way a spike map ships flat.
 
 ```js
+// datasets.points: [{lon: 54.4, lat: 23.8, value: 48.2, label: "UAE", accent: true}, ...]
 Plot.plot({
   projection: "mercator",
   length: {range: [0, 120]},
   marks: [
-    Plot.geo(datasets.countries, {fill: palette.rule, fillOpacity: 0.2, stroke: "white"}),
-    Plot.vector(datasets.cities, {x: "lon", y: "lat", length: "value", rotate: 0, stroke: palette.ink, strokeWidth: 1.5, anchor: "start"}),
-    Plot.dot(datasets.cities.filter(c=>c.accent), {x: "lon", y: "lat", fill: palette.accent, r: 4}),
+    Plot.geo(basemap.land, {fill: palette.rule, fillOpacity: 0.2, stroke: "white"}),
+    Plot.vector(datasets.points, {x: "lon", y: "lat", length: "value", rotate: 0, stroke: palette.ink, strokeWidth: 1.5, anchor: "start"}),
+    Plot.dot(datasets.points.filter(p => p.accent), {x: "lon", y: "lat", fill: palette.accent, r: 4}),
+    Plot.text(datasets.points.filter(p => p.accent), {x: "lon", y: "lat", text: "label", dx: 10, fontSize: 11, fontFamily: palette.bodyFont}),
   ],
 });
 ```
+
+**Important for all geo recipes:** the `basemap` global is always available (`basemap.land`, `basemap.countries`). Never try to fetch or inline a GeoJSON from `datasets` — use `basemap`. If you do not use `basemap`, your chart will not render as a map.
 
 ---
 
