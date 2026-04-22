@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meridian.report/schema/insight-hunter-response.json",
+  "title": "InsightHunterResponse",
+  "type": "object",
+  "required": ["insights"],
+  "properties": {
+    "insights": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "headline",
+          "why_it_matters",
+          "shape_hint",
+          "data_refs",
+          "editorial_angle",
+          "rank_reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_]*$",
+            "maxLength": 60
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "contrast",
+              "scale_surprise",
+              "trajectory",
+              "concentration",
+              "anomaly",
+              "duration_mismatch",
+              "composition",
+              "named_detail"
+            ]
+          },
+          "headline": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 400
+          },
+          "why_it_matters": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 800
+          },
+          "shape_hint": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 600
+          },
+          "data_refs": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": ["string", "number"] } }
+              ]
+            }
+          },
+          "editorial_angle": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80
+          },
+          "rank_reason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 400
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meridian.report/schema/slide-designer-v2-response.json",
+  "title": "SlideDesignerV2Response",
+  "type": "object",
+  "required": ["id", "recipe", "render_code", "data_refs", "source"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "maxLength": 60
+    },
+    "recipe": {
+      "type": "string",
+      "enum": [
+        "hero_number",
+        "slope_graph",
+        "dumbbell",
+        "diverging_bars",
+        "lollipop",
+        "bullet_chart",
+        "grouped_bar",
+        "stacked_bars",
+        "single_stacked_bar",
+        "marimekko",
+        "index_chart",
+        "connected_scatter",
+        "moving_average",
+        "fan_chart",
+        "streamgraph",
+        "stacked_area",
+        "area_line_custom",
+        "horizon_chart",
+        "sparkline_grid",
+        "small_multiples_area",
+        "beeswarm",
+        "dot_plot",
+        "barcode",
+        "strip_plot",
+        "histogram",
+        "box_plot",
+        "qq_plot",
+        "ridgeline",
+        "waffle_grid",
+        "survey_waffle",
+        "warming_stripes",
+        "calendar_heatmap",
+        "dot_heatmap",
+        "hex_bin",
+        "contour_density",
+        "treemap",
+        "arc_concentration",
+        "arc_diagram",
+        "choropleth",
+        "spike_map"
+      ]
+    },
+    "eyebrow": { "type": "string", "maxLength": 120 },
+    "headline": { "type": "string", "minLength": 4, "maxLength": 400 },
+    "subhead": { "type": "string", "maxLength": 600 },
+    "footnote": { "type": "string", "maxLength": 400 },
+    "source": { "type": "string", "minLength": 8, "maxLength": 280 },
+    "render_code": { "type": "string", "minLength": 40, "maxLength": 12000 },
+    "data_refs": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string" },
+          { "type": "array", "items": { "type": ["string", "number"] } }
+        ]
+      }
+    },
+    "palette_hint": { "type": "string", "maxLength": 800 },
+    "design_notes": { "type": "string", "maxLength": 600 }
+  },
+  "additionalProperties": false
+}

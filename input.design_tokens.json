@@ -1,0 +1,15 @@
+{
+  "primary_color": "#0D1B2E",
+  "accent_color": "#C9A96E",
+  "secondary_colors": [
+    "#3E9A8F",
+    "#4B80BF",
+    "#E8D5A8"
+  ],
+  "background": "#F5F0E8",
+  "font_heading": "Inter Tight",
+  "font_body": "Inter",
+  "logo_url": "/assets/logos/rimal_capital_logo.svg",
+  "logo_dark_url": "/assets/logos/rimal_capital_logo_white.svg",
+  "cover_image_url": "/assets/covers/ar2024_cover.jpg"
+}

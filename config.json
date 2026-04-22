@@ -1,0 +1,13 @@
+{
+  "target_slide_count": 7,
+  "concurrency": 5,
+  "models": {
+    "insight_hunter": "anthropic/claude-opus-4.7",
+    "art_director": "anthropic/claude-sonnet-4.6",
+    "slide_designer": "anthropic/claude-opus-4.7"
+  },
+  "inputs": {
+    "enriched": "input.enriched.json",
+    "design_tokens": "input.design_tokens.json"
+  }
+}

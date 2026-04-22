@@ -1,0 +1,384 @@
+/* ── Slides deck — full-bleed, scroll-snap navigation ──────────────────── */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@300;400;500;600;700&display=swap");
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg, #F5F0E8);
+  color: var(--ink, #1A1A1A);
+  font-family: var(--font-body, Georgia, serif);
+  font-size: 16px;
+  line-height: 1.5;
+  scroll-behavior: smooth;
+}
+
+.deck {
+  height: 100vh;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+}
+
+.deck::-webkit-scrollbar {
+  width: 0;
+  background: transparent;
+}
+
+.slide {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 1fr;
+  padding: 56px 80px 56px;
+  background: var(--bg, #F5F0E8);
+  border-bottom: 1px solid rgba(184, 176, 164, 0.25);
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .slide { padding: 32px 28px; }
+}
+
+/* Minimal-chrome mode: infographic is the slide. Source footer + counter persist. */
+.slide--minimal {
+  grid-template-rows: 1fr;
+  padding: 0;
+}
+.slide--minimal .slide-counter { display: none; }
+
+.slide-stage--full {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 72px;
+  display: block;
+}
+.slide-source-footer {
+  position: absolute;
+  left: 64px;
+  right: 64px;
+  bottom: 0;
+  height: 72px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--rule, #B8B0A4);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
+  z-index: 3;
+}
+.slide-source-footer .slide-source { max-width: 78%; line-height: 1.5; }
+.slide-source-footer .slide-source strong {
+  color: var(--ink, #1A1A1A);
+  font-weight: 600;
+  margin-right: 6px;
+}
+.slide-source-footer .slide-page em {
+  font-style: normal;
+  color: var(--ink, #1A1A1A);
+}
+.slide-stage--full > .slide-plot-host,
+.slide-stage--full > .slide-plot-host > svg {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  display: block;
+}
+
+/* Header zone: counter, eyebrow, headline */
+.slide-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 2;
+}
+
+.slide-counter {
+  position: absolute;
+  top: 28px;
+  right: 40px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--rule, #B8B0A4);
+}
+
+.slide-counter em {
+  font-style: normal;
+  color: var(--ink, #1A1A1A);
+}
+
+.slide-eyebrow {
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent, #C9A96E);
+  font-weight: 600;
+}
+
+.slide-headline {
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: clamp(28px, 3.2vw, 48px);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--primary, #0D1B2E);
+  font-weight: 400;
+  max-width: 22em;
+  margin: 0;
+}
+
+.slide-subhead {
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-size: clamp(16px, 1.3vw, 22px);
+  line-height: 1.4;
+  color: #555;
+  max-width: 36em;
+  margin: 8px 0 0;
+}
+
+/* Stage: where the chart / typography lives */
+.slide-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  padding: 24px 0;
+  overflow: hidden;
+}
+
+.slide-stage > svg,
+.slide-stage > figure,
+.slide-stage > div {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.slide-stage figure {
+  margin: 0;
+}
+
+.slide-plot-host {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-plot-host > svg {
+  width: 100%;
+  height: 100%;
+  max-width: 1600px;
+  max-height: 720px;
+}
+
+/* Typographic mode — no chart, type carries the argument */
+.slide-type {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 1200px;
+  padding: 0 40px;
+}
+
+.slide-type .mega {
+  font-family: var(--font-heading);
+  font-size: clamp(96px, 14vw, 220px);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: var(--primary);
+  font-weight: 500;
+  margin: 0;
+}
+
+.slide-type .mega.accent { color: var(--accent); }
+
+.slide-type .secondary {
+  font-family: var(--font-heading);
+  font-size: clamp(22px, 2vw, 32px);
+  line-height: 1.25;
+  color: var(--ink);
+  max-width: 26em;
+  margin: 0;
+  font-weight: 400;
+}
+
+.slide-type .tertiary {
+  font-family: var(--font-body);
+  font-size: clamp(14px, 1vw, 18px);
+  line-height: 1.5;
+  color: #555;
+  max-width: 44em;
+  margin: 0;
+}
+
+/* Quote sub-mode (still under typographic archetype) */
+.slide-quote {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+  gap: 64px;
+  width: 100%;
+  max-width: 1400px;
+  align-items: center;
+}
+
+.slide-quote blockquote {
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-size: clamp(26px, 2.6vw, 44px);
+  line-height: 1.25;
+  color: var(--primary);
+  margin: 0;
+  quotes: "\201C" "\201D";
+  position: relative;
+  padding-left: 24px;
+  border-left: 3px solid var(--accent);
+}
+
+.slide-quote blockquote::before { content: open-quote; position: absolute; left: 0; top: -0.1em; color: var(--accent); }
+
+.slide-quote .attribution {
+  font-family: var(--font-body);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #666;
+  margin-top: 20px;
+  padding-left: 24px;
+}
+
+.slide-quote .counter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 24px;
+  border-left: 1px solid var(--rule);
+}
+
+.slide-quote .counter-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.slide-quote .counter-value {
+  font-family: var(--font-heading);
+  font-size: clamp(44px, 5vw, 76px);
+  line-height: 1;
+  color: var(--primary);
+  letter-spacing: -0.02em;
+}
+
+/* Footer */
+.slide-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  z-index: 2;
+}
+
+.slide-footnote {
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: #777;
+  max-width: 44em;
+}
+
+.slide-category {
+  font-family: var(--font-body);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rule);
+}
+
+/* Cover slide */
+.slide.cover {
+  grid-template-rows: 1fr auto;
+}
+
+.slide.cover .cover-title {
+  font-family: var(--font-heading);
+  font-size: clamp(56px, 8vw, 132px);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--primary);
+  margin: 0;
+  font-weight: 400;
+  max-width: 14em;
+}
+
+.slide.cover .cover-kicker {
+  font-family: var(--font-body);
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 32px;
+}
+
+.slide.cover .cover-meta {
+  font-family: var(--font-body);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #555;
+  border-top: 1px solid var(--rule);
+  padding-top: 24px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Error state */
+.slide-error {
+  background: #fff3f0;
+  border: 1px solid #d44;
+  padding: 20px;
+  font-family: monospace;
+  font-size: 13px;
+  color: #a00;
+  white-space: pre-wrap;
+  max-width: 80ch;
+  overflow: auto;
+}
+
+.placeholder-miss {
+  background: #ffe88a;
+  color: #7a5c00;
+  padding: 0 3px;
+  border-radius: 2px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+/* Print: one slide per A4 landscape page */
+@page { size: A4 landscape; margin: 0; }
+@media print {
+  .deck { height: auto; overflow: visible; scroll-snap-type: none; }
+  .slide { page-break-after: always; height: 100vh; border: none; }
+}
