@@ -81,18 +81,3 @@ vercel deploy --prod
 
 `.vercelignore` keeps Python code, prompts, archive, and inputs out of the
 upload — only `slides.html` + `renderer/` ship.
-
-## Multi-model benchmark
-
-`bench/` has a harness for swapping each phase's model against a frozen
-reference run (other three phases held fixed at the baseline). See
-`bench/candidates.json` for the model matrix.
-
-```bash
-uv run python -m bench.harness sd anthropic/claude-sonnet-4.6 --run-id r1
-uv run python -m bench.eval sd --all
-uv run python -m bench.report
-```
-
-Output lands in `bench/out/report.md` with per-phase quality/$/tokens tables
-and a Pareto pick (cheapest model within 5% of best quality per phase).
