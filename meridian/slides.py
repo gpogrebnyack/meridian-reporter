@@ -79,6 +79,7 @@ def _build_user_message(
     narrative_tags: str,
     storyboard_entry: dict[str, Any],
     critic_feedback: str | None = None,
+    skip_cache: bool = False,
 ) -> list[dict[str, Any]]:
     """Split user into cacheable shared prefix and per-slide tail."""
     meta = (plan or {}).get("meta", {}) or {}
@@ -109,7 +110,7 @@ def _build_user_message(
     shared_part, _, tail = rendered.partition("__STORYBOARD_SPLIT__")
     entry_blob = json.dumps(storyboard_entry, ensure_ascii=False, indent=2) + tail
     blocks = [
-        text_block(shared_part, cache=True),
+        text_block(shared_part, cache=not skip_cache),
         text_block(entry_blob, cache=False),
     ]
     if critic_feedback:
@@ -142,6 +143,7 @@ async def _design_slide(
     max_tokens: int,
     reasoning_max_tokens: int | None,
     critic_feedback: str | None = None,
+    skip_cache: bool = False,
 ) -> SlideResult:
     sid = storyboard_entry["id"]
     recipe = storyboard_entry.get("recipe", "")
@@ -154,6 +156,7 @@ async def _design_slide(
         narrative_tags=narrative_tags,
         storyboard_entry=storyboard_entry,
         critic_feedback=critic_feedback,
+        skip_cache=skip_cache,
     )
     try:
         result = await or_client.chat_async(
@@ -212,9 +215,10 @@ async def _run_async(
     reasoning_max_tokens: int | None,
     only: set[str] | None,
     critic_feedback_by_id: dict[str, str] | None = None,
+    skip_cache: bool = False,
 ) -> list[SlideResult]:
     system, user_tmpl, schema, recipes, narrative_tags = _load_prompts()
-    system_blocks = [text_block(system, cache=True)]
+    system_blocks = [text_block(system, cache=not skip_cache)]
     or_client = OpenRouterClient()
     branding = enriched.get("branding", {}) or {}
 
@@ -246,6 +250,7 @@ async def _run_async(
                 max_tokens=max_tokens,
                 reasoning_max_tokens=reasoning_max_tokens,
                 critic_feedback=(critic_feedback_by_id or {}).get(entry["id"]),
+                skip_cache=skip_cache,
             )
             for entry in storyboard
         ]
@@ -374,6 +379,7 @@ def run_slides(
     reasoning_max_tokens: int | None = 3000,
     only: list[str] | None = None,
     critic_feedback_by_id: dict[str, str] | None = None,
+    skip_cache: bool = False,
 ) -> list[SlideResult]:
     storyboard_doc = json.loads(storyboard_path.read_text())
     storyboard = storyboard_doc.get("slides_storyboard", [])
@@ -397,6 +403,7 @@ def run_slides(
             reasoning_max_tokens=reasoning_max_tokens,
             only=set(only) if only else None,
             critic_feedback_by_id=critic_feedback_by_id,
+            skip_cache=skip_cache,
         )
     )
     _print_summary(results)

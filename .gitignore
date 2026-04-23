@@ -24,3 +24,7 @@ wheels/
 # Local tool state
 .playwright-mcp/
 .claude/
+
+# Benchmark experiments (scratch, not source)
+/bench/
+.vercel

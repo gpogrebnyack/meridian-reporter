@@ -25,6 +25,16 @@ ContentBlock = dict[str, Any]
 MessageContent = str | Sequence[ContentBlock]
 
 
+def supports_caching(model: str) -> bool:
+    """True if the provider honours Anthropic-style `cache_control` breakpoints.
+
+    OpenRouter passes these through for Anthropic models only; every other
+    provider silently ignores the field and bills full input on every call.
+    """
+    slug = model.lower()
+    return slug.startswith("anthropic/") or slug.startswith("claude-")
+
+
 def text_block(text: str, *, cache: bool = False, ttl: str | None = None) -> ContentBlock:
     """Build a text content block, optionally marked as a cache breakpoint."""
     block: ContentBlock = {"type": "text", "text": text}
